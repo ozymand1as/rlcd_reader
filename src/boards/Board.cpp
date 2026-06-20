@@ -1,7 +1,8 @@
 #include "Board.h"
 #include "RLCD_Board.h"
 #include <esp_log.h>
-#include "../sd_card/SDCard.h"
+#include "SDCard.h"
+#include "battery/ADCBattery.h"
 
 static const char *TAG = "Board";
 
@@ -41,7 +42,7 @@ void Board::stop_filesystem()
 Battery *Board::get_battery()
 {
 #ifdef BATTERY_ADC_CHANNEL
-  return new ADCBattery(BATTERY_ADC_CHANNEL);
+  return new ADCBattery((adc1_channel_t)BATTERY_ADC_CHANNEL);
 #else
   return nullptr;
 #endif

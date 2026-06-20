@@ -10,7 +10,7 @@ static const char *TAG = "EREADER";
 
 bool EpubReader::load()
 {
-  ESP_LOGD(TAG, "Before epub load: %d", esp_get_free_heap_size());
+  ESP_LOGD(TAG, "Before epub load: %lu", (unsigned long)esp_get_free_heap_size());
   if (!epub || epub->get_path() != state.path)
   {
     renderer->show_busy();
@@ -20,7 +20,7 @@ bool EpubReader::load()
     epub = new Epub(state.path);
     if (epub->load())
     {
-      ESP_LOGD(TAG, "After epub load: %d", esp_get_free_heap_size());
+      ESP_LOGD(TAG, "After epub load: %lu", (unsigned long)esp_get_free_heap_size());
       return false;
     }
   }
@@ -33,17 +33,17 @@ void EpubReader::parse_and_layout_current_section()
   {
     renderer->show_busy();
     ESP_LOGI(TAG, "Parse and render section %d", state.current_section);
-    ESP_LOGD(TAG, "Before read html: %d", esp_get_free_heap_size());
+    ESP_LOGD(TAG, "Before read html: %lu", (unsigned long)esp_get_free_heap_size());
 
     std::string item = epub->get_spine_item(state.current_section);
     std::string base_path = item.substr(0, item.find_last_of('/') + 1);
     char *html = reinterpret_cast<char *>(epub->get_item_contents(item));
-    ESP_LOGD(TAG, "After read html: %d", esp_get_free_heap_size());
+    ESP_LOGD(TAG, "After read html: %lu", (unsigned long)esp_get_free_heap_size());
     parser = new RubbishHtmlParser(html, strlen(html), base_path);
     free(html);
-    ESP_LOGD(TAG, "After parse: %d", esp_get_free_heap_size());
+    ESP_LOGD(TAG, "After parse: %lu", (unsigned long)esp_get_free_heap_size());
     parser->layout(renderer, epub);
-    ESP_LOGD(TAG, "After layout: %d", esp_get_free_heap_size());
+    ESP_LOGD(TAG, "After layout: %lu", (unsigned long)esp_get_free_heap_size());
     state.pages_in_current_section = parser->get_page_count();
   }
 }
@@ -87,7 +87,7 @@ void EpubReader::render()
   ESP_LOGD(TAG, "rendering page %d of %d", state.current_page, parser->get_page_count());
   parser->render_page(state.current_page, renderer, epub);
   ESP_LOGD(TAG, "rendered page %d of %d", state.current_page, parser->get_page_count());
-  ESP_LOGD(TAG, "after render: %d", esp_get_free_heap_size());
+  ESP_LOGD(TAG, "after render: %lu", (unsigned long)esp_get_free_heap_size());
 }
 
 void EpubReader::set_state_section(uint16_t current_section)

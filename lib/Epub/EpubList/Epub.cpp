@@ -321,16 +321,12 @@ int Epub::get_spine_items_count()
 
 std::string &Epub::get_spine_item(int spine_index)
 {
-  try
+  if (spine_index >= 0 && spine_index < (int)m_spine.size())
   {
-    return m_spine.at(spine_index).second;
+    return m_spine[spine_index].second;
   }
-  catch (const std::out_of_range &oor)
-  {
-    ESP_LOGI(TAG, "get_spine_item index:%d is out_of_range", spine_index);
-    spine_index = 0;
-  }
-  return m_spine.at(spine_index).second;
+  ESP_LOGI(TAG, "get_spine_item index:%d is out_of_range", spine_index);
+  return m_spine[0].second;
 }
 
 EpubTocEntry &Epub::get_toc_item(int toc_index)

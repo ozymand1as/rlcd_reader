@@ -290,30 +290,30 @@ void RLCDRenderer::draw_rect(int x, int y, int width, int height, uint8_t color)
   }
 }
 
+static void bresenham_line(RLCDRenderer *renderer, int x0, int y0, int x1, int y1, uint8_t color)
+{
+  bool black = color < 128;
+  int dx = abs(x1 - x0);
+  int dy = abs(y1 - y0);
+  int sx = x0 < x1 ? 1 : -1;
+  int sy = y0 < y1 ? 1 : -1;
+  int err = dx - dy;
+  
+  while (true)
+  {
+    renderer->draw_pixel(x0, y0, color);
+    if (x0 == x1 && y0 == y1) break;
+    int e2 = 2 * err;
+    if (e2 > -dy) { err -= dy; x0 += sx; }
+    if (e2 < dx) { err += dx; y0 += sy; }
+  }
+}
+
 void RLCDRenderer::draw_triangle(int x0, int y0, int x1, int y1, int x2, int y2, uint8_t color)
 {
-  // Bresenham's line algorithm for each edge
-  auto draw_line = [this, color](int x0, int y0, int x1, int y1) {
-    bool black = color < 128;
-    int dx = abs(x1 - x0);
-    int dy = abs(y1 - y0);
-    int sx = x0 < x1 ? 1 : -1;
-    int sy = y0 < y1 ? 1 : -1;
-    int err = dx - dy;
-    
-    while (true)
-    {
-      set_pixel(x0, y0, black);
-      if (x0 == x1 && y0 == y1) break;
-      int e2 = 2 * err;
-      if (e2 > -dy) { err -= dy; x0 += sx; }
-      if (e2 < dx) { err += dx; y0 += sy; }
-    }
-  };
-  
-  draw_line(x0, y0, x1, y1);
-  draw_line(x1, y1, x2, y2);
-  draw_line(x2, y2, x0, y0);
+  bresenham_line(this, x0, y0, x1, y1, color);
+  bresenham_line(this, x1, y1, x2, y2, color);
+  bresenham_line(this, x2, y2, x0, y0, color);
 }
 
 void RLCDRenderer::draw_circle(int x, int y, int r, uint8_t color)
@@ -438,8 +438,8 @@ void RLCDRenderer::show_busy()
   
   fill_rect(cx - 10, cy - 15, 20, 30, 255);
   draw_rect(cx - 10, cy - 15, 20, 30, 0);
-  draw_line(cx - 8, cy - 13, cx + 8, cy - 13);
-  draw_line(cx - 8, cy + 13, cx + 8, cy + 13);
+  fill_rect(cx - 8, cy - 13, 16, 1, 0);
+  fill_rect(cx - 8, cy + 13, 16, 1, 0);
   
   flush_display();
 }

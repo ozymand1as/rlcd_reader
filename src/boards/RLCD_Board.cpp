@@ -254,7 +254,7 @@ Renderer *RLCD_Board::get_renderer()
   return m_renderer;
 }
 
-ButtonControls *RLCD_Board::get_button_controls(xQueueHandle ui_queue)
+ButtonControls *RLCD_Board::get_button_controls(QueueHandle_t ui_queue)
 {
   // TODO: Implement button controls
   return nullptr;

@@ -1,0 +1,11 @@
+{
+  "name": "sd_card",
+  "version": "1.0.0",
+  "description": "SD card driver",
+  "keywords": "sd, spi, filesystem",
+  "frameworks": "*",
+  "platforms": "*",
+  "build": {
+    "srcFilter": ["+<*.cpp>"]
+  }
+}

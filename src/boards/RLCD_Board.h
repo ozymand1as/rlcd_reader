@@ -3,8 +3,6 @@
 #include "Board.h"
 #include <driver/gpio.h>
 #include <driver/spi_master.h>
-#include <esp_lcd_panel_io.h>
-#include <esp_lcd_panel_ops.h>
 
 class RLCDRenderer;
 
@@ -24,7 +22,7 @@ public:
   void power_up() override;
   void prepare_to_sleep() override;
   Renderer *get_renderer() override;
-  ButtonControls *get_button_controls(xQueueHandle ui_queue) override;
+  ButtonControls *get_button_controls(QueueHandle_t ui_queue) override;
   
   static void send_command(uint8_t cmd);
   static void send_data(uint8_t data);

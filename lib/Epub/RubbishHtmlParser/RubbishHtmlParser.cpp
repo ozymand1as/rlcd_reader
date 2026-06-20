@@ -225,16 +225,16 @@ void RubbishHtmlParser::render_page(int page_index, Renderer *renderer, Epub *ep
 {
   renderer->clear_screen();
   
-  try
+  if (page_index >= 0 && page_index < (int)pages.size())
   {
-    pages.at(page_index)->render(renderer, epub);
+    pages[page_index]->render(renderer, epub);
   }
-  catch (const std::out_of_range &oor)
+  else
   {
     ESP_LOGI(TAG, "render_page out of range");
     uint16_t y = renderer->get_page_height() / 2 - 20;
     renderer->draw_rect(1, y, renderer->get_page_width(), 105, 125);
-    renderer->draw_text_box("Reached the limit of the book\nUse the SELECT button",
+    renderer->draw_text_box("Reached the end of the book\nUse the SELECT button",
                             10, y, renderer->get_page_width(), 80, false, false);
   }
 }

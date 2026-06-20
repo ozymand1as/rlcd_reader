@@ -1,0 +1,11 @@
+{
+  "name": "miniz",
+  "version": "2.2.0",
+  "description": "Compression library",
+  "keywords": "compression, zip, zlib",
+  "frameworks": "*",
+  "platforms": "*",
+  "build": {
+    "srcFilter": ["+<miniz.c>"]
+  }
+}

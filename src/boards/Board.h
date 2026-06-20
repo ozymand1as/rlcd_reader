@@ -18,7 +18,7 @@ public:
   virtual void start_filesystem();
   virtual void stop_filesystem();
   virtual Battery *get_battery();
-  virtual ButtonControls *get_button_controls(xQueueHandle ui_queue) = 0;
+  virtual ButtonControls *get_button_controls(QueueHandle_t ui_queue) = 0;
   
   static Board *factory();
 

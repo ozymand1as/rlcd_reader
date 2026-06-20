@@ -1,0 +1,12 @@
+{
+  "name": "epub",
+  "version": "1.0.0",
+  "description": "EPUB reader library",
+  "keywords": "epub, reader, book",
+  "frameworks": "*",
+  "platforms": "*",
+  "build": {
+    "srcFilter": ["+<**/*.cpp>"],
+    "includeDir": "."
+  }
+}

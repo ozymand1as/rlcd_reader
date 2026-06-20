@@ -2,14 +2,16 @@
 #include <freertos/task.h>
 #include <freertos/queue.h>
 #include <esp_sleep.h>
+#include <esp_timer.h>
 #include <esp_log.h>
 #include "boards/Board.h"
+#include "boards/battery/Battery.h"
 #include "boards/controls/RLCDButtonControls.h"
-#include "../lib/Epub/EpubList/Epub.h"
-#include "../lib/Epub/EpubList/EpubList.h"
-#include "../lib/Epub/EpubList/EpubReader.h"
-#include "../lib/Epub/EpubList/EpubToc.h"
-#include "../lib/Epub/EpubList/State.h"
+#include "EpubList/Epub.h"
+#include "EpubList/EpubList.h"
+#include "EpubList/EpubReader.h"
+#include "EpubList/EpubToc.h"
+#include "EpubList/State.h"
 
 #ifdef LOG_ENABLED
 #define LOG_LEVEL ESP_LOG_INFO
@@ -197,7 +199,7 @@ void main_task(void *param)
   renderer->set_margin_left(10);
   renderer->set_margin_right(10);
   
-  xQueueHandle ui_queue = xQueueCreate(10, sizeof(UIAction));
+  QueueHandle_t ui_queue = xQueueCreate(10, sizeof(UIAction));
   
   ESP_LOGI(TAG, "Setting up controls");
   RLCDButtonControls *button_controls = new RLCDButtonControls(
@@ -276,7 +278,7 @@ void app_main()
   esp_log_level_set("SDC", LOG_LEVEL);
   
   ESP_LOGI(TAG, "Starting RLCD EPUB Reader");
-  ESP_LOGI(TAG, "Free heap: %d bytes", esp_get_free_heap_size());
+  ESP_LOGI(TAG, "Free heap: %lu bytes", (unsigned long)esp_get_free_heap_size());
   
   xTaskCreatePinnedToCore(main_task, "main_task", 65536, NULL, 1, NULL, 1);
 }

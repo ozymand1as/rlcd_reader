@@ -1,5 +1,5 @@
 #include "RLCD_Board.h"
-#include "Renderer/RLCDRenderer.h"
+#include "Renderer/U8g2RLCDRenderer.h"
 #include <esp_log.h>
 #include <esp_heap_caps.h>
 
@@ -249,7 +249,8 @@ Renderer *RLCD_Board::get_renderer()
 {
   if (!m_renderer)
   {
-    m_renderer = new RLCDRenderer(RLCD_WIDTH, RLCD_HEIGHT);
+    m_renderer = new U8g2RLCDRenderer(RLCD_WIDTH, RLCD_HEIGHT);
+    m_renderer->init();
   }
   return m_renderer;
 }

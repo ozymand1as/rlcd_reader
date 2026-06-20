@@ -4,13 +4,13 @@
 #include <driver/gpio.h>
 #include <driver/spi_master.h>
 
-class RLCDRenderer;
+class U8g2RLCDRenderer;
 
 class RLCD_Board : public Board
 {
 private:
   spi_device_handle_t m_spi;
-  RLCDRenderer *m_renderer;
+  U8g2RLCDRenderer *m_renderer;
   
   void init_spi();
   void init_display();

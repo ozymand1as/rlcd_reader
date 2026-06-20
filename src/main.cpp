@@ -203,7 +203,7 @@ void main_task(void *param)
   
   ESP_LOGI(TAG, "Setting up controls");
   RLCDButtonControls *button_controls = new RLCDButtonControls(
-    BUTTON_UP_GPIO, BUTTON_DOWN_GPIO, BUTTON_SELECT_GPIO,
+    BUTTON_BACK_GPIO, BUTTON_KEY_GPIO,
     BUTTON_ACTIVE_LEVEL, ui_queue
   );
   button_controls->setup();

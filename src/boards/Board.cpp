@@ -1,6 +1,7 @@
 #include "Board.h"
 #include "RLCD_Board.h"
 #include <esp_log.h>
+#include "../sd_card/SDCard.h"
 
 static const char *TAG = "Board";
 
@@ -17,19 +18,31 @@ Board *Board::factory()
 
 void Board::start_filesystem()
 {
-  // TODO: Initialize SD card
-  ESP_LOGI(TAG, "Filesystem not implemented yet");
+  ESP_LOGI(TAG, "Starting SD card filesystem");
+  m_sd_card = new SDCard(
+    "/fs",
+    (gpio_num_t)SD_CARD_PIN_NUM_MISO,
+    (gpio_num_t)SD_CARD_PIN_NUM_MOSI,
+    (gpio_num_t)SD_CARD_PIN_NUM_CLK,
+    (gpio_num_t)SD_CARD_PIN_NUM_CS
+  );
 }
 
 void Board::stop_filesystem()
 {
-  // TODO: Cleanup SD card
-  ESP_LOGI(TAG, "Filesystem cleanup not implemented yet");
+  if (m_sd_card)
+  {
+    ESP_LOGI(TAG, "Stopping SD card filesystem");
+    delete (SDCard *)m_sd_card;
+    m_sd_card = nullptr;
+  }
 }
 
 Battery *Board::get_battery()
 {
-  // TODO: Implement battery monitoring
-  ESP_LOGI(TAG, "Battery monitoring not implemented yet");
+#ifdef BATTERY_ADC_CHANNEL
+  return new ADCBattery(BATTERY_ADC_CHANNEL);
+#else
   return nullptr;
+#endif
 }

@@ -1,147 +1,173 @@
 #include "EpubList.h"
 #include <esp_log.h>
-#include <dirent.h>
 
-static const char *TAG = "EpubList";
+static const char *TAG = "PUBLIST";
 
-EpubList::EpubList(Renderer *renderer, EpubListState &state)
-  : m_renderer(renderer), m_state(state)
+#define PADDING 20
+#define EPUBS_PER_PAGE 5
+
+void EpubList::next()
 {
+  state.selected_item = (state.selected_item + 1) % state.num_epubs;
 }
 
-EpubList::~EpubList()
+void EpubList::prev()
 {
+  state.selected_item = (state.selected_item - 1 + state.num_epubs) % state.num_epubs;
 }
 
-bool EpubList::load(const std::string &path)
+bool EpubList::load(const char *path)
 {
-  ESP_LOGI(TAG, "Loading EPUB list from %s", path.c_str());
-  
-  DIR *dir = opendir(path.c_str());
-  if (!dir)
+  if (state.is_loaded)
   {
-    ESP_LOGE(TAG, "Failed to open directory: %s", path.c_str());
+    ESP_LOGI(TAG, "Already loaded books");
+    return true;
+  }
+  
+  renderer->show_busy();
+  state.previous_rendered_page = -1;
+  state.num_epubs = 0;
+  
+  DIR *dir;
+  struct dirent *ent;
+  if ((dir = opendir(path)) != NULL)
+  {
+    while ((ent = readdir(dir)) != NULL)
+    {
+      ESP_LOGD(TAG, "Found file: %s", ent->d_name);
+      if (ent->d_name[0] == '.' || ent->d_type == DT_DIR)
+      {
+        continue;
+      }
+      int name_length = strlen(ent->d_name);
+      if (name_length < 5 || strcmp(ent->d_name + name_length - 5, ".epub") != 0)
+      {
+        continue;
+      }
+      
+      ESP_LOGD(TAG, "Loading epub %s", ent->d_name);
+      Epub *epub = new Epub(std::string("/fs/") + ent->d_name);
+      if (epub->load())
+      {
+        strncpy(state.epub_list[state.num_epubs].path, epub->get_path().c_str(), MAX_PATH_SIZE);
+        strncpy(state.epub_list[state.num_epubs].title, replace_html_entities(epub->get_title()).c_str(), MAX_TITLE_SIZE);
+        state.num_epubs++;
+        if (state.num_epubs == MAX_EPUB_LIST_SIZE)
+        {
+          ESP_LOGE(TAG, "Too many epubs, max is %d", MAX_EPUB_LIST_SIZE);
+          break;
+        }
+      }
+      else
+      {
+        ESP_LOGE(TAG, "Failed to load epub %s", ent->d_name);
+      }
+      delete epub;
+    }
+    closedir(dir);
+    
+    std::sort(
+        state.epub_list,
+        state.epub_list + state.num_epubs,
+        [](const EpubListItem &a, const EpubListItem &b)
+        {
+          return strcmp(a.title, b.title) < 0;
+        });
+  }
+  else
+  {
+    renderer->clear_screen();
+    uint16_t y = renderer->get_page_height() / 2 - 80;
+    renderer->draw_rect(1, y, renderer->get_page_width(), 115, 80);
+    const char *warning = "Please insert SD Card";
+    renderer->draw_text_box(warning, 10, y + 4, renderer->get_page_width(), 80, true, false);
+    renderer->draw_text_box("Restarting in 10 secs.", 10, y + 34, renderer->get_page_width(), 80, false, false);
+    renderer->flush_display();
+    ESP_LOGE(TAG, "Could not open directory %s", path);
+    vTaskDelay(pdMS_TO_TICKS(1000 * 10));
+    esp_restart();
     return false;
   }
   
-  m_state.epub_list.clear();
-  
-  struct dirent *entry;
-  while ((entry = readdir(dir)) != nullptr)
+  if (state.selected_item >= state.num_epubs)
   {
-    std::string filename = entry->d_name;
-    
-    // Check if it's an EPUB file
-    if (filename.length() > 5 && 
-        filename.substr(filename.length() - 5) == ".epub")
-    {
-      m_state.epub_list.push_back(filename);
-      ESP_LOGI(TAG, "Found EPUB: %s", filename.c_str());
-    }
+    state.selected_item = 0;
+    state.previous_rendered_page = -1;
+    state.previous_selected_item = -1;
   }
-  
-  closedir(dir);
-  
-  m_state.num_epubs = m_state.epub_list.size();
-  m_state.is_loaded = true;
-  
-  ESP_LOGI(TAG, "Found %d EPUB files", m_state.num_epubs);
+  state.is_loaded = true;
   return true;
 }
 
 void EpubList::render()
 {
-  ESP_LOGI(TAG, "Rendering EPUB list");
+  ESP_LOGD(TAG, "Rendering EPUB list");
+  int current_page = state.selected_item / EPUBS_PER_PAGE;
+  int cell_height = renderer->get_page_height() / EPUBS_PER_PAGE;
+  int start_index = current_page * EPUBS_PER_PAGE;
+  int ypos = 0;
   
-  m_renderer->clear_screen();
-  m_renderer->draw_text(10, 10, "EPUB Files", true);
-  
-  if (m_state.num_epubs == 0)
+  if (current_page != state.previous_rendered_page || m_needs_redraw)
   {
-    m_renderer->draw_text(10, 30, "No EPUB files found", false);
-    m_renderer->draw_text(10, 50, "Insert SD card with", false);
-    m_renderer->draw_text(10, 60, "EPUB files", false);
-    return;
+    m_needs_redraw = false;
+    renderer->show_busy();
+    renderer->clear_screen();
+    state.previous_selected_item = -1;
+    state.previous_rendered_page = -1;
   }
   
-  // Show list of EPUBs
-  int y = 30;
-  int max_visible = 10;
-  int start = 0;
-  
-  if (m_state.selected_item >= max_visible)
+  for (int i = start_index; i < start_index + EPUBS_PER_PAGE && i < state.num_epubs; i++)
   {
-    start = m_state.selected_item - max_visible + 1;
-  }
-  
-  for (int i = start; i < m_state.num_epubs && i < start + max_visible; i++)
-  {
-    std::string display_name = m_state.epub_list[i];
-    
-    // Remove .epub extension for display
-    size_t ext_pos = display_name.rfind(".epub");
-    if (ext_pos != std::string::npos)
+    if (current_page != state.previous_rendered_page)
     {
-      display_name = display_name.substr(0, ext_pos);
+      ESP_LOGI(TAG, "Rendering item %d", i);
+      Epub *epub = new Epub(state.epub_list[i].path);
+      epub->load();
+      
+      int image_xpos = PADDING;
+      int image_ypos = ypos + PADDING;
+      int image_height = cell_height - PADDING * 2;
+      int image_width = 2 * image_height / 3;
+      
+      int text_xpos = image_xpos + image_width + PADDING;
+      int text_ypos = ypos + PADDING / 2;
+      int text_width = renderer->get_page_width() - (text_xpos + PADDING);
+      int text_height = cell_height - PADDING * 2;
+      
+      TextBlock *title_block = new TextBlock(LEFT_ALIGN);
+      title_block->add_span(state.epub_list[i].title, false, false);
+      title_block->layout(renderer, epub, text_width);
+      
+      int title_height = title_block->line_breaks.size() * renderer->get_line_height();
+      int y_offset = title_height < text_height ? (text_height - title_height) / 2 : 0;
+      
+      for (int i = 0; i < title_block->line_breaks.size() && y_offset + renderer->get_line_height() < text_height; i++)
+      {
+        title_block->render(renderer, i, text_xpos, text_ypos + y_offset);
+        y_offset += renderer->get_line_height();
+      }
+      delete title_block;
+      delete epub;
     }
     
-    // Truncate if too long
-    if (display_name.length() > 35)
+    if (state.previous_selected_item == i)
     {
-      display_name = display_name.substr(0, 32) + "...";
+      for (int i = 0; i < 5; i++)
+      {
+        renderer->draw_rect(i, ypos + PADDING / 2 + i, renderer->get_page_width() - 2 * i, cell_height - PADDING - 2 * i, 255);
+      }
     }
     
-    // Highlight selected item
-    bool is_selected = (i == m_state.selected_item);
-    
-    if (is_selected)
+    if (state.selected_item == i)
     {
-      m_renderer->fill_rect(0, y - 2, m_renderer->get_page_width(), 12, 0);
-      m_renderer->draw_text(10, y, display_name.c_str(), false);
+      for (int i = 0; i < 5; i++)
+      {
+        renderer->draw_rect(i, ypos + PADDING / 2 + i, renderer->get_page_width() - 2 * i, cell_height - PADDING - 2 * i, 0);
+      }
     }
-    else
-    {
-      m_renderer->draw_text(10, y, display_name.c_str(), false);
-    }
-    
-    y += 14;
+    ypos += cell_height;
   }
   
-  // Show scroll indicator
-  if (m_state.num_epubs > max_visible)
-  {
-    int scroll_y = 30 + (m_state.selected_item * 140 / m_state.num_epubs);
-    m_renderer->fill_rect(m_renderer->get_page_width() - 5, scroll_y, 3, 10, 0);
-  }
-}
-
-void EpubList::prev()
-{
-  if (m_state.selected_item > 0)
-  {
-    m_state.selected_item--;
-  }
-}
-
-void EpubList::next()
-{
-  if (m_state.selected_item < m_state.num_epubs - 1)
-  {
-    m_state.selected_item++;
-  }
-}
-
-void EpubList::set_needs_redraw()
-{
-  // Force redraw on next render() call
-}
-
-std::string EpubList::get_selected_item()
-{
-  if (m_state.selected_item >= 0 && 
-      m_state.selected_item < m_state.num_epubs)
-  {
-    return m_state.epub_list[m_state.selected_item];
-  }
-  return "";
+  state.previous_selected_item = state.selected_item;
+  state.previous_rendered_page = current_page;
 }

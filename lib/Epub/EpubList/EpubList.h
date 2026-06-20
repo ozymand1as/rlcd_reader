@@ -1,32 +1,31 @@
 #pragma once
 
-#include <string>
 #include <vector>
+#include <sys/types.h>
+#include <dirent.h>
+#include <string.h>
+#include <algorithm>
+#include "Epub.h"
 #include "../Renderer/Renderer.h"
+#include "../RubbishHtmlParser/blocks/TextBlock.h"
+#include "../RubbishHtmlParser/htmlEntities.h"
+#include "State.h"
 
-struct EpubListState
-{
-  int num_epubs = 0;
-  int selected_item = 0;
-  bool is_loaded = false;
-  std::vector<std::string> epub_list;
-};
+class Epub;
 
 class EpubList
 {
 private:
-  Renderer *m_renderer;
-  EpubListState &m_state;
-  
+  Renderer *renderer;
+  EpubListState &state;
+  bool m_needs_redraw = false;
+
 public:
-  EpubList(Renderer *renderer, EpubListState &state);
-  ~EpubList();
-  
-  bool load(const std::string &path);
-  void render();
-  void prev();
+  EpubList(Renderer *renderer, EpubListState &state) : renderer(renderer), state(state) {}
+  ~EpubList() {}
+  bool load(const char *path);
+  void set_needs_redraw() { m_needs_redraw = true; }
   void next();
-  void set_needs_redraw();
-  
-  std::string get_selected_item();
+  void prev();
+  void render();
 };

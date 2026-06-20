@@ -104,14 +104,15 @@ void U8g2RLCDRenderer::init()
 
 void U8g2RLCDRenderer::setFont(bool bold, bool italic)
 {
-  // u8g2 font selection based on style
+  // Cyrillic fonts for Russian support
+  // _t_cyrillic suffix = Latin + Cyrillic characters
   if (bold)
   {
-    u8g2_SetFont(&m_u8g2, u8g2_font_7x14B_tf);
+    u8g2_SetFont(&m_u8g2, u8g2_font_6x13B_t_cyrillic);
   }
   else
   {
-    u8g2_SetFont(&m_u8g2, u8g2_font_7x14_tf);
+    u8g2_SetFont(&m_u8g2, u8g2_font_7x13_t_cyrillic);
   }
 }
 
@@ -122,19 +123,19 @@ void U8g2RLCDRenderer::setFontSize(int size)
   switch (size)
   {
   case 0: // Small
-    u8g2_SetFont(&m_u8g2, u8g2_font_6x10_tf);
+    u8g2_SetFont(&m_u8g2, u8g2_font_6x12_t_cyrillic);
     break;
   case 1: // Medium (default)
-    u8g2_SetFont(&m_u8g2, u8g2_font_7x14_tf);
+    u8g2_SetFont(&m_u8g2, u8g2_font_7x13_t_cyrillic);
     break;
   case 2: // Large
-    u8g2_SetFont(&m_u8g2, u8g2_font_9x15_tf);
+    u8g2_SetFont(&m_u8g2, u8g2_font_9x15_t_cyrillic);
     break;
   case 3: // XL
-    u8g2_SetFont(&m_u8g2, u8g2_font_10x20_tf);
+    u8g2_SetFont(&m_u8g2, u8g2_font_10x20_t_cyrillic);
     break;
   default:
-    u8g2_SetFont(&m_u8g2, u8g2_font_7x14_tf);
+    u8g2_SetFont(&m_u8g2, u8g2_font_7x13_t_cyrillic);
     break;
   }
 }
@@ -214,7 +215,7 @@ void U8g2RLCDRenderer::show_busy()
 {
   clear_screen();
   u8g2_SetDrawColor(&m_u8g2, 1);
-  u8g2_SetFont(&m_u8g2, u8g2_font_7x14_tf);
+  u8g2_SetFont(&m_u8g2, u8g2_font_7x13_t_cyrillic);
   const char *busy = "Loading...";
   int w = u8g2_GetStrWidth(&m_u8g2, busy);
   u8g2_DrawStr(&m_u8g2, (m_width - w) / 2, m_height / 2, busy);

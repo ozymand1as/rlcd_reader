@@ -1,0 +1,32 @@
+# PlatformIO
+.pio/
+.vscode/
+*.pio
+*.pioenvs
+*.piolibdeps
+
+# Build
+build/
+sdkconfig
+sdkconfig.old
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Compiled files
+*.o
+*.a
+*.elf
+*.bin
+*.hex
+*.map
+
+# Logs
+*.log

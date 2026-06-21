@@ -5,17 +5,20 @@ A port of the [diy-esp32-epub-reader](https://github.com/atomic14/diy-esp32-epub
 ## Features
 
 - Read EPUB files from SD card
-- Navigate with physical buttons (UP, DOWN, SELECT)
+- Navigate with 2 buttons (BOOT = back, KEY = scroll/select)
 - Battery level monitoring
-- Deep sleep support
+- Deep sleep with state restoration
+- Cyrillic font support (Russian, Ukrainian, etc.)
+- Table of contents navigation
 
 ## Hardware
 
 - **Board**: Waveshare ESP32-S3-RLCD-4.2
-- **Display**: 4.2" Reflective LCD (300x400, 1-bit monochrome)
+- **Display**: 4.2" Reflective LCD (300x400, 1-bit monochrome, ST7305)
 - **MCU**: ESP32-S3-WROOM-1-N16R8 (16MB Flash, 8MB PSRAM)
-- **Storage**: TF card slot for EPUB files
-- **Power**: 18650 battery holder
+- **Storage**: TF card slot for EPUB files (FAT32)
+- **Power**: 18650 battery holder, USB-C charging
+- **Sensors**: SHTC3 (temp/humidity), PCF85063 (RTC)
 
 ## Pin Configuration
 
@@ -29,14 +32,14 @@ A port of the [diy-esp32-epub-reader](https://github.com/atomic14/diy-esp32-epub
 | RST | 41 |
 | MISO | 13 |
 
-### Buttons (Active Low)
-| Function | GPIO |
-|----------|------|
-| UP | 0 |
-| DOWN | 21 |
-| SELECT | 47 |
+### Buttons (Active Low, Internal Pull-up)
+| Function | GPIO | Action |
+|----------|------|--------|
+| BOOT | 0 | Back / Cancel |
+| KEY | 18 | Single=Down, Double=Up, Long=Select |
+| PWR | N/A | Hardware power (not GPIO) |
 
-### SD Card
+### SD Card (SPI)
 | Function | GPIO |
 |----------|------|
 | MISO | 13 |
@@ -44,17 +47,74 @@ A port of the [diy-esp32-epub-reader](https://github.com/atomic14/diy-esp32-epub
 | SCK | 12 |
 | CS | 10 |
 
+## Deep Sleep
+
+The reader automatically enters deep sleep after 2 minutes of inactivity. State is preserved to survive sleep/wake cycles.
+
+### How It Works
+
+1. **State Storage**: UI state (selected book, page, section) is stored in RTC memory (`RTC_DATA_ATTR`), which survives deep sleep.
+
+2. **Display Buffer**: The current screen content is saved to SD card (`/fs/front_buffer.z`) before sleep.
+
+3. **Wake Sources**: BOOT or KEY button press wakes the device via GPIO interrupt.
+
+4. **Restoration**: On wake, the device:
+   - Restores UI state from RTC memory
+   - Loads display buffer from SD card
+   - Redraws the last screen instantly
+
+### Sleep Behavior
+
+```
+Idle 2 min → Save state → Save display → Deep sleep
+                                            ↓
+Wake button pressed ← GPIO wake interrupt ←
+                                            ↓
+                                   Load display → Resume reading
+```
+
+### Battery Life
+
+| Mode | Current Draw |
+|------|-------------|
+| Active (display on) | ~50 mA |
+| Deep sleep | ~10 μA |
+| Display retention (RLCD) | 0 mA (image persists) |
+
+**Note**: Unlike e-paper, the RLCD display **retains the last image** without power. After deep sleep, the display still shows the last page even though the MCU is off. On wake, the buffer is restored to maintain consistency.
+
+## Navigation
+
+| Button | Short Press | Double Press | Long Press |
+|--------|-------------|--------------|------------|
+| BOOT | Go back | - | - |
+| KEY | Next page | Previous page | Select/Confirm |
+
+### UI Flow
+
+```
+EPUB List → Table of Contents → Reading
+   ↑ SELECT(BOOT)     ↑ SELECT(BOOT)    ↑ SELECT(BOOT)
+   └──────────────────┴─────────────────┘
+```
+
 ## Building
 
 ### Prerequisites
 
-- PlatformIO installed
-- ESP-IDF toolchain
+```bash
+# Install PlatformIO
+pip install platformio
+
+# Or via Homebrew
+brew install platformio
+```
 
 ### Build and Flash
 
 ```bash
-# Build the project
+# Build
 pio run
 
 # Flash to device
@@ -64,39 +124,51 @@ pio run --target upload
 pio device monitor
 ```
 
-### Build for specific environment
-
-```bash
-# Build for RLCD 4.2
-pio run -e rlcd_42
-```
-
 ## Project Structure
 
 ```
 rlcd_reader/
-├── platformio.ini          # PlatformIO configuration
-├── CMakeLists.txt          # ESP-IDF CMake configuration
-├── partitions.csv          # Flash partition table
+├── platformio.ini              # PlatformIO configuration
+├── CMakeLists.txt              # ESP-IDF CMake configuration
+├── partitions.csv              # Flash partition table
+├── HARDWARE_SPEC.md            # Detailed hardware reference
 ├── src/
-│   ├── main.cpp           # Main application
+│   ├── main.cpp                # Main application & UI state machine
+│   ├── u8g2/                   # u8g2 font library (C sources)
 │   └── boards/
-│       ├── Board.h        # Board abstraction
-│       ├── Board.cpp      # Board factory
-│       ├── RLCD_Board.h   # RLCD board implementation
-│       ├── RLCD_Board.cpp
+│       ├── Board.h/cpp         # Board abstraction
+│       ├── RLCD_Board.h/cpp    # RLCD board + SPI display init
 │       ├── Renderer/
-│       │   └── RLCDRenderer.*  # Display renderer
+│       │   ├── U8g2RLCDRenderer.*  # u8g2-based renderer
+│       │   └── RLCDRenderer.*      # Legacy renderer (unused)
 │       ├── controls/
-│       │   └── RLCDButtonControls.*  # Button handling
+│       │   ├── ButtonControls.h     # Button interface
+│       │   └── RLCDButtonControls.* # 2-button + multi-click
 │       └── battery/
-│           ├── Battery.h      # Battery abstraction
-│           └── ADCBattery.*   # ADC battery monitor
+│           ├── Battery.h        # Battery interface
+│           └── ADCBattery.*     # ADC battery monitor
 └── lib/
-    └── Epub/
-        └── Renderer/
-            ├── Renderer.h     # Base renderer class
-            └── Renderer.cpp
+    ├── Epub/
+    │   ├── EpubList/
+    │   │   ├── Epub.h/cpp           # EPUB parser (OPF, NCX, spine)
+    │   │   ├── EpubList.h/cpp       # EPUB file browser
+    │   │   ├── EpubReader.h/cpp     # Page-by-page renderer
+    │   │   ├── EpubToc.h/cpp        # Table of contents
+    │   │   └── State.h              # Persistent state structs
+    │   ├── RubbishHtmlParser/
+    │   │   ├── RubbishHtmlParser.*  # XHTML parser
+    │   │   ├── blocks/              # TextBlock, ImageBlock
+    │   │   ├── Page.h               # Page layout
+    │   │   └── htmlEntities.*       # HTML entity decoder
+    │   ├── ZipFile/
+    │   │   └── ZipFile.*            # ZIP extraction (miniz)
+    │   └── Renderer/
+    │       ├── Renderer.h           # Base renderer interface
+    │       └── Renderer.cpp
+    ├── miniz-2.2.0/                 # ZIP compression library
+    ├── sd_card/
+    │   └── SDCard.*                 # SD card SPI driver
+    └── u8g2/                        # u8g2 font library
 ```
 
 ## Implementation Status
@@ -104,15 +176,29 @@ rlcd_reader/
 - [x] Project structure
 - [x] PlatformIO configuration
 - [x] Board abstraction
-- [x] RLCD display driver
-- [x] 1-bit framebuffer renderer
-- [x] Button controls
-- [x] Battery monitoring
-- [ ] SD card filesystem
-- [ ] EPUB parsing
-- [ ] EPUB rendering
-- [ ] Table of contents
-- [ ] Deep sleep state restoration
+- [x] RLCD display driver (ST7305)
+- [x] u8g2 font rendering (Cyrillic support)
+- [x] Button controls (2-button, multi-click)
+- [x] Battery monitoring (ADC)
+- [x] SD card filesystem (SPI, FAT32)
+- [x] EPUB parsing (OPF, NCX, spine, manifest)
+- [x] HTML parsing (text, bold, images, line breaks)
+- [x] EPUB rendering (word wrap, pagination)
+- [x] Table of contents navigation
+- [x] Deep sleep state restoration
+- [ ] Image rendering (PNG/JPEG)
+- [ ] Touch support
+- [ ] Wi-Fi OTA updates
+
+## Fonts
+
+| Font | Size | Coverage |
+|------|------|----------|
+| `u8g2_font_7x13_t_cyrillic` | 7x13px | Latin + Cyrillic (default) |
+| `u8g2_font_6x13B_t_cyrillic` | 6x13px | Bold |
+| `u8g2_font_6x12_t_cyrillic` | 6x12px | Small |
+| `u8g2_font_9x15_t_cyrillic` | 9x15px | Large |
+| `u8g2_font_10x20_t_cyrillic` | 10x20px | Extra large |
 
 ## Differences from Original
 
@@ -122,6 +208,13 @@ rlcd_reader/
 | Colors | 16 grayscale | 1-bit B&W |
 | Refresh | 1-2 seconds | ~60ms |
 | Interface | Parallel | SPI |
+| Fonts | EPD fonts (400KB) | u8g2 (4-7KB each) |
+| Buttons | 3 (up/down/select) | 2 (back + multi-click) |
+| Sleep wake | ULP coprocessor | GPIO interrupt |
+
+## Hardware Spec
+
+See [HARDWARE_SPEC.md](HARDWARE_SPEC.md) for detailed hardware documentation including GPIO mapping, SPI configuration, display init sequence, and troubleshooting.
 
 ## License
 

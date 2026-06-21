@@ -276,6 +276,94 @@ int U8g2RLCDRenderer::get_line_height()
   return u8g2_GetAscent(&m_u8g2) - u8g2_GetDescent(&m_u8g2);
 }
 
+bool U8g2RLCDRenderer::dehydrate()
+{
+  ESP_LOGI(TAG, "Dehydrating display state");
+  
+  uint8_t *buf = u8g2_GetBufferPtr(&m_u8g2);
+  uint16_t buf_len = u8g2_GetBufferTileHeight(&m_u8g2) * u8g2_GetBufferTileWidth(&m_u8g2) * 8;
+  
+  if (!buf || buf_len == 0)
+  {
+    ESP_LOGE(TAG, "No buffer to save");
+    return false;
+  }
+  
+  FILE *fp = fopen("/fs/front_buffer.z", "w");
+  if (!fp)
+  {
+    ESP_LOGE(TAG, "Failed to open file for writing");
+    return false;
+  }
+  
+  // Write buffer size header
+  fwrite(&buf_len, sizeof(uint16_t), 1, fp);
+  // Write buffer data
+  size_t written = fwrite(buf, 1, buf_len, fp);
+  fclose(fp);
+  
+  if (written != buf_len)
+  {
+    ESP_LOGE(TAG, "Failed to write buffer: %lu bytes", (unsigned long)written);
+    remove("/fs/front_buffer.z");
+    return false;
+  }
+  
+  ESP_LOGI(TAG, "Buffer saved: %lu bytes", (unsigned long)buf_len);
+  return true;
+}
+
+bool U8g2RLCDRenderer::hydrate()
+{
+  ESP_LOGI(TAG, "Hydrating display state");
+  
+  FILE *fp = fopen("/fs/front_buffer.z", "r");
+  if (!fp)
+  {
+    ESP_LOGW(TAG, "No saved state found");
+    return false;
+  }
+  
+  // Read buffer size header
+  uint16_t buf_len = 0;
+  if (fread(&buf_len, sizeof(uint16_t), 1, fp) != 1 || buf_len == 0)
+  {
+    ESP_LOGE(TAG, "Invalid buffer header");
+    fclose(fp);
+    return false;
+  }
+  
+  uint8_t *buf = u8g2_GetBufferPtr(&m_u8g2);
+  uint16_t expected_len = u8g2_GetBufferTileHeight(&m_u8g2) * u8g2_GetBufferTileWidth(&m_u8g2) * 8;
+  
+  if (buf_len > expected_len)
+  {
+    ESP_LOGE(TAG, "Buffer size mismatch: %d > %d", buf_len, expected_len);
+    fclose(fp);
+    return false;
+  }
+  
+  // Read buffer data
+  size_t read = fread(buf, 1, buf_len, fp);
+  fclose(fp);
+  
+  if (read != buf_len)
+  {
+    ESP_LOGE(TAG, "Failed to read buffer: %lu bytes", (unsigned long)read);
+    return false;
+  }
+  
+  ESP_LOGI(TAG, "Buffer restored: %lu bytes", (unsigned long)buf_len);
+  return true;
+}
+
+void U8g2RLCDRenderer::reset()
+{
+  ESP_LOGI(TAG, "Resetting display");
+  clear_screen();
+  flush_display();
+}
+
 // U8g2 custom callbacks for ST7305 display
 static uint8_t u8x8_byte_custom(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_ptr)
 {

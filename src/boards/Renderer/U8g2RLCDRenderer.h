@@ -51,4 +51,9 @@ public:
   // U8g2 specific methods
   u8g2_t *getU8g2() { return &m_u8g2; }
   void setFontSize(int size);
+  
+  // Deep sleep state
+  bool dehydrate() override;
+  bool hydrate() override;
+  void reset() override;
 };

@@ -7,7 +7,7 @@ A port of the [diy-esp32-epub-reader](https://github.com/atomic14/diy-esp32-epub
 ## Features
 
 - Read EPUB files from SD card
-- Navigate with 4 buttons (BOOT=back, KEY=select, FWD=next, PREV=previous)
+- Navigate with 4 buttons (BOOT=back, KEY=select, FWD=next, PREV=previous) with long-press actions
 - Battery level monitoring
 - Deep sleep with state restoration
 - Cyrillic font support (Russian, Ukrainian, etc.)

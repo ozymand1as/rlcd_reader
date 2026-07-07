@@ -126,15 +126,19 @@ For monochrome: bit 1 = pixel on/off, bit 0 = 0.
 
 | Button | GPIO | Active Level | Pull-up | Function |
 |--------|------|-------------|---------|----------|
-| BOOT | 0 | Low (0) | Internal | Download mode / Reset |
+| BOOT | 0 | Low (0) | Internal | Download mode / Back |
 | KEY | 18 | Low (0) | Internal | User-configurable |
+| PREV | 17 | Low (0) | Internal | Previous page / Back to list |
+| FWD | 20 | Low (0) | Internal | Next page / Select |
 | PWR | N/A | N/A | N/A | Hardware power management (not GPIO) |
 
 ### Button Usage Notes
-- **BOOT**: Hold during power-on to enter download mode. Can be used as user button when not booting.
+- **BOOT**: Hold during power-on to enter download mode. Single press = previous page, long press = back to list.
 - **KEY**: General-purpose user button. Single click, double click, and long press can be detected.
+- **PREV (GP17)**: Single press = previous page, long press = back to list.
+- **FWD (GP20)**: Single press = next page, long press = select/confirm.
 - **PWR**: Long press = power off, single click = power on. Controls PMIC hardware directly.
-- Both GPIO buttons use **internal pull-up resistors** (GPIO_PULLUP_ENABLE).
+- All GPIO buttons use **internal pull-up resistors** (GPIO_PULLUP_ENABLE).
 - Buttons are **active-low** (pressed = LOW, released = HIGH).
 
 ---
@@ -294,6 +298,8 @@ For monochrome: bit 1 = pixel on/off, bit 0 = 0.
 | 15 | I2S WS | Output | Audio word select |
 | 16 | I2S SDO | Output | Audio data out |
 | 18 | KEY button | Input | Active-low, internal pull-up |
+| 17 | PREV button | Input | Active-low, internal pull-up |
+| 20 | FWD button | Input | Active-low, internal pull-up |
 | 40 | LCD CS | Output | Active-low |
 | 41 | LCD RST | Output | Active-low reset |
 | 48 | I2S SDI | Input | Audio data in |
@@ -307,9 +313,7 @@ For monochrome: bit 1 = pixel on/off, bit 0 = 0.
 | 4 | Free |
 | 6 | Free |
 | 7 | Free |
-| 17 | Free |
 | 19 | Free |
-| 20 | Free |
 | 21 | Free |
 | 38 | Free |
 | 39 | Free |
@@ -365,6 +369,8 @@ build_flags =
   ; Buttons
   -DBUTTON_BACK_GPIO=GPIO_NUM_0
   -DBUTTON_KEY_GPIO=GPIO_NUM_18
+  -DBUTTON_PREV_GPIO=GPIO_NUM_17
+  -DBUTTON_FWD_GPIO=GPIO_NUM_20
   -DBUTTON_ACTIVE_LEVEL=0
   ; Battery
   -DBATTERY_ADC_CHANNEL=ADC1_CHANNEL_3

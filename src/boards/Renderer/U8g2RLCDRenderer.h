@@ -42,6 +42,7 @@ public:
   void clear_screen() override;
   void flush_display() override;
   void flush_area(int x, int y, int width, int height) override;
+  void draw_status_bar(int current_page, int total_pages, float battery_pct) override;
   
   int get_page_width() override;
   int get_page_height() override;

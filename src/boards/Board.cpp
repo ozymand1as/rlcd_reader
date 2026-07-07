@@ -19,13 +19,13 @@ Board *Board::factory()
 
 void Board::start_filesystem()
 {
-  ESP_LOGI(TAG, "Starting SD card filesystem");
+  ESP_LOGI(TAG, "Starting SD card filesystem (SDMMC)");
   m_sd_card = new SDCard(
     "/fs",
-    (gpio_num_t)SD_CARD_PIN_NUM_MISO,
-    (gpio_num_t)SD_CARD_PIN_NUM_MOSI,
-    (gpio_num_t)SD_CARD_PIN_NUM_CLK,
-    (gpio_num_t)SD_CARD_PIN_NUM_CS
+    (gpio_num_t)38,  // CLK
+    (gpio_num_t)21,  // CMD
+    (gpio_num_t)39,  // D0
+    1                 // 1-bit mode
   );
 }
 

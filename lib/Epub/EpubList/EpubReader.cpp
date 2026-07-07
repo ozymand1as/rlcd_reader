@@ -21,17 +21,21 @@ bool EpubReader::load()
     if (epub->load())
     {
       ESP_LOGD(TAG, "After epub load: %lu", (unsigned long)esp_get_free_heap_size());
-      return false;
+      return true;
     }
+    return false;
   }
   return true;
 }
 
-void EpubReader::parse_and_layout_current_section()
+void EpubReader::parse_and_layout_current_section(bool silent)
 {
   if (!parser)
   {
-    renderer->show_busy();
+    if (!silent)
+    {
+      renderer->show_busy();
+    }
     ESP_LOGI(TAG, "Parse and render section %d", state.current_section);
     ESP_LOGD(TAG, "Before read html: %lu", (unsigned long)esp_get_free_heap_size());
 
@@ -88,6 +92,14 @@ void EpubReader::render()
   parser->render_page(state.current_page, renderer, epub);
   ESP_LOGD(TAG, "rendered page %d of %d", state.current_page, parser->get_page_count());
   ESP_LOGD(TAG, "after render: %lu", (unsigned long)esp_get_free_heap_size());
+}
+
+void EpubReader::setup_parser(bool show_loading)
+{
+  if (!parser)
+  {
+    parse_and_layout_current_section(!show_loading);
+  }
 }
 
 void EpubReader::set_state_section(uint16_t current_section)

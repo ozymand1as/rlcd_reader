@@ -40,6 +40,70 @@ RTC_DATA_ATTR EpubTocState epub_index_state;
 static EpubList *epub_list = nullptr;
 static EpubReader *reader = nullptr;
 static EpubToc *contents = nullptr;
+static Battery *s_battery = nullptr;
+
+#pragma pack(push, 1)
+struct ReaderState {
+  uint32_t magic;
+  uint8_t ui_state;
+  uint16_t selected_item;
+  uint16_t current_section;
+  uint16_t current_page;
+};
+#pragma pack(pop)
+
+#define READER_STATE_MAGIC 0x524C4344  // "RLCD"
+#define READER_STATE_PATH "/fs/reader_state.dat"
+
+void save_reader_state(Renderer *renderer)
+{
+  ReaderState s;
+  s.magic = READER_STATE_MAGIC;
+  s.ui_state = (uint8_t)ui_state;
+  s.selected_item = epub_list_state.selected_item;
+  EpubListItem &item = epub_list_state.epub_list[epub_list_state.selected_item];
+  s.current_section = item.current_section;
+  s.current_page = item.current_page;
+
+  FILE *fp = fopen(READER_STATE_PATH, "w");
+  if (fp)
+  {
+    fwrite(&s, sizeof(s), 1, fp);
+    fclose(fp);
+    ESP_LOGI(TAG, "Reader state saved: book=%d section=%d page=%d",
+             s.selected_item, s.current_section, s.current_page);
+  }
+}
+
+bool load_reader_state()
+{
+  FILE *fp = fopen(READER_STATE_PATH, "r");
+  if (!fp) return false;
+
+  ReaderState s;
+  if (fread(&s, sizeof(s), 1, fp) != 1 || s.magic != READER_STATE_MAGIC)
+  {
+    fclose(fp);
+    return false;
+  }
+  fclose(fp);
+
+  if (s.selected_item >= epub_list_state.num_epubs)
+  {
+    ESP_LOGW(TAG, "Saved book index %d out of range", s.selected_item);
+    return false;
+  }
+
+  ui_state = (UIState)s.ui_state;
+  epub_list_state.selected_item = s.selected_item;
+  EpubListItem &item = epub_list_state.epub_list[s.selected_item];
+  item.current_section = s.current_section;
+  item.current_page = s.current_page;
+
+  ESP_LOGI(TAG, "Reader state loaded: book=%d section=%d page=%d",
+           s.selected_item, s.current_section, s.current_page);
+  return true;
+}
 
 void handleEpub(Renderer *renderer, UIAction action);
 void handleEpubList(Renderer *renderer, UIAction action, bool needs_redraw);
@@ -50,7 +114,27 @@ void handleEpub(Renderer *renderer, UIAction action)
   if (!reader)
   {
     reader = new EpubReader(epub_list_state.epub_list[epub_list_state.selected_item], renderer);
-    reader->load();
+    if (!reader->load())
+    {
+      ESP_LOGE(TAG, "Failed to load epub, returning to list");
+      delete reader;
+      reader = nullptr;
+      ui_state = SELECTING_EPUB;
+      if (!epub_list)
+      {
+        epub_list = new EpubList(renderer, epub_list_state);
+      }
+      handleEpubList(renderer, NONE, true);
+      return;
+    }
+    // On boot restore: show cached page, set up parser silently
+    if (action == NONE)
+    {
+      renderer->hydrate();
+      renderer->flush_display();
+      reader->setup_parser(false);
+      return;
+    }
   }
   switch (action)
   {
@@ -76,6 +160,16 @@ void handleEpub(Renderer *renderer, UIAction action)
     break;
   }
   reader->render();
+
+  EpubListItem &item = epub_list_state.epub_list[epub_list_state.selected_item];
+  float bat_pct = s_battery ? s_battery->get_percentage() : 0.0f;
+  renderer->draw_status_bar(item.current_page, item.pages_in_current_section, bat_pct);
+
+  if (action != NONE)
+  {
+    renderer->dehydrate();
+    save_reader_state(renderer);
+  }
 }
 
 void handleEpubTableContents(Renderer *renderer, UIAction action, bool needs_redraw)
@@ -101,6 +195,7 @@ void handleEpubTableContents(Renderer *renderer, UIAction action, bool needs_red
     reader->load();
     delete contents;
     contents = nullptr;
+    save_reader_state(renderer);
     handleEpub(renderer, NONE);
     return;
   case NONE:
@@ -123,7 +218,12 @@ void handleEpubList(Renderer *renderer, UIAction action, bool needs_redraw)
   }
   if (needs_redraw)
   {
-    epub_list->set_needs_redraw();
+    int new_page = epub_list_state.selected_item / 5;
+    if (new_page != epub_list_state.previous_rendered_page ||
+        epub_list_state.selected_item != epub_list_state.previous_selected_item)
+    {
+      epub_list->set_needs_redraw();
+    }
   }
   switch (action)
   {
@@ -193,9 +293,11 @@ void main_task(void *param)
   if (battery)
   {
     battery->setup();
+    s_battery = battery;
   }
   
-  renderer->set_margin_top(35);
+  renderer->set_margin_top(10);
+  renderer->set_margin_bottom(5);
   renderer->set_margin_left(10);
   renderer->set_margin_right(10);
   
@@ -204,6 +306,7 @@ void main_task(void *param)
   ESP_LOGI(TAG, "Setting up controls");
   RLCDButtonControls *button_controls = new RLCDButtonControls(
     BUTTON_BACK_GPIO, BUTTON_KEY_GPIO,
+    BUTTON_FWD_GPIO, BUTTON_PREV_GPIO,
     BUTTON_ACTIVE_LEVEL, ui_queue
   );
   button_controls->setup();
@@ -218,8 +321,19 @@ void main_task(void *param)
   }
   else
   {
-    renderer->reset();
-    handleUserInteraction(renderer, NONE, true);
+    // Load epub list so saved state can be validated
+    epub_list = new EpubList(renderer, epub_list_state);
+    epub_list->load("/fs/");
+
+    if (load_reader_state())
+    {
+      handleUserInteraction(renderer, NONE, true);
+    }
+    else
+    {
+      ui_state = SELECTING_EPUB;
+      handleUserInteraction(renderer, NONE, true);
+    }
   }
   
   if (battery)
@@ -239,10 +353,14 @@ void main_task(void *param)
     {
       if (ui_action != NONE)
       {
+        const char *action_names[] = {"NONE", "UP", "DOWN", "SELECT"};
+        ESP_LOGI(TAG, "Action received: %s", action_names[ui_action]);
         last_user_interaction = esp_timer_get_time();
         handleUserInteraction(renderer, ui_action, false);
       }
     }
+
+    button_controls->poll();
     
     if (battery)
     {
@@ -255,6 +373,7 @@ void main_task(void *param)
   
   ESP_LOGI(TAG, "Saving state");
   renderer->dehydrate();
+  save_reader_state(renderer);
   
   board->stop_filesystem();
   board->prepare_to_sleep();

@@ -24,7 +24,6 @@ static spi_device_handle_t s_spi = nullptr;
 
 RLCD_Board::RLCD_Board() : m_renderer(nullptr)
 {
-  init_spi();
 }
 
 RLCD_Board::~RLCD_Board()
@@ -36,8 +35,8 @@ void RLCD_Board::init_spi()
   ESP_LOGI(TAG, "Initializing SPI for RLCD");
   
   spi_bus_config_t bus_cfg = {};
-  bus_cfg.mosi_io_num = GPIO_NUM_11;
-  bus_cfg.sclk_io_num = GPIO_NUM_12;
+  bus_cfg.mosi_io_num = GPIO_NUM_12;
+  bus_cfg.sclk_io_num = GPIO_NUM_11;
   bus_cfg.miso_io_num = GPIO_NUM_13;
   bus_cfg.quadwp_io_num = -1;
   bus_cfg.quadhd_io_num = -1;
@@ -49,7 +48,7 @@ void RLCD_Board::init_spi()
   spi_device_interface_config_t dev_cfg = {};
   dev_cfg.clock_speed_hz = RLCD_SPI_FREQ_HZ;
   dev_cfg.mode = 0;
-  dev_cfg.spics_io_num = GPIO_NUM_40;
+  dev_cfg.spics_io_num = -1;
   dev_cfg.queue_size = 10;
   
   ret = spi_bus_add_device(RLCD_SPI_HOST, &dev_cfg, &s_spi);
@@ -59,42 +58,52 @@ void RLCD_Board::init_spi()
   gpio_config_t io_conf = {};
   io_conf.intr_type = GPIO_INTR_DISABLE;
   io_conf.mode = GPIO_MODE_OUTPUT;
-  io_conf.pin_bit_mask = (1ULL << GPIO_NUM_5) | (1ULL << GPIO_NUM_41);
+  io_conf.pin_bit_mask = (1ULL << GPIO_NUM_5) | (1ULL << GPIO_NUM_41) | (1ULL << GPIO_NUM_40);
   io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
   io_conf.pull_up_en = GPIO_PULLUP_ENABLE;
   gpio_config(&io_conf);
+  gpio_set_level(GPIO_NUM_40, 1);
   
   ESP_LOGI(TAG, "SPI initialized");
 }
 
 void RLCD_Board::send_command(uint8_t cmd)
 {
+  gpio_set_level(GPIO_NUM_40, 0);
   gpio_set_level(GPIO_NUM_5, 0);  // DC low = command
   
   spi_transaction_t t = {};
   t.length = 8;
   t.tx_buffer = &cmd;
   spi_device_polling_transmit(s_spi, &t);
+  
+  gpio_set_level(GPIO_NUM_40, 1);
 }
 
 void RLCD_Board::send_data(uint8_t data)
 {
+  gpio_set_level(GPIO_NUM_40, 0);
   gpio_set_level(GPIO_NUM_5, 1);  // DC high = data
   
   spi_transaction_t t = {};
   t.length = 8;
   t.tx_buffer = &data;
   spi_device_polling_transmit(s_spi, &t);
+  
+  gpio_set_level(GPIO_NUM_40, 1);
 }
 
 void RLCD_Board::send_data_bulk(uint8_t *data, int len)
 {
+  gpio_set_level(GPIO_NUM_40, 0);
   gpio_set_level(GPIO_NUM_5, 1);  // DC high = data
   
   spi_transaction_t t = {};
   t.length = len * 8;
   t.tx_buffer = data;
   spi_device_polling_transmit(s_spi, &t);
+  
+  gpio_set_level(GPIO_NUM_40, 1);
 }
 
 void RLCD_Board::init_display()
@@ -234,7 +243,6 @@ void RLCD_Board::init_display()
 void RLCD_Board::power_up()
 {
   ESP_LOGI(TAG, "Powering up RLCD board");
-  init_display();
 }
 
 void RLCD_Board::prepare_to_sleep()

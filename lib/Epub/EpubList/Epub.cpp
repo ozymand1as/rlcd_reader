@@ -135,12 +135,24 @@ bool Epub::parse_content_opf(ZipFile &zip, std::string &content_opf_file)
   }
   
   auto title = metadata->FirstChildElement("dc:title");
-  if (!title)
+  if (!title || !title->GetText() || strlen(title->GetText()) == 0)
   {
-    ESP_LOGE(TAG, "Missing title");
-    return false;
+    ESP_LOGW(TAG, "Missing or empty title, falling back to filename");
+    auto last_slash = m_path.find_last_of('/');
+    auto last_dot = m_path.find_last_of('.');
+    if (last_slash != std::string::npos && last_dot != std::string::npos && last_dot > last_slash)
+    {
+      m_title = m_path.substr(last_slash + 1, last_dot - last_slash - 1);
+    }
+    else
+    {
+      m_title = "Unknown";
+    }
   }
-  m_title = title->GetText();
+  else
+  {
+    m_title = title->GetText();
+  }
   
   auto cover = metadata->FirstChildElement("meta");
   while (cover && cover->Attribute("name") && strcmp(cover->Attribute("name"), "cover") != 0)

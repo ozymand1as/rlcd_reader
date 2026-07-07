@@ -10,8 +10,8 @@
 static const char *TAG = "U8g2RLCD";
 
 // Display pin definitions (matching RLCD_Board)
-#define RLCD_PIN_MOSI GPIO_NUM_11
-#define RLCD_PIN_SCK  GPIO_NUM_12
+#define RLCD_PIN_MOSI GPIO_NUM_12
+#define RLCD_PIN_SCK  GPIO_NUM_11
 #define RLCD_PIN_DC   GPIO_NUM_5
 #define RLCD_PIN_CS   GPIO_NUM_40
 #define RLCD_PIN_RST  GPIO_NUM_41
@@ -63,7 +63,7 @@ void U8g2RLCDRenderer::init()
   spi_device_interface_config_t dev_cfg = {};
   dev_cfg.clock_speed_hz = 24000000;
   dev_cfg.mode = 0;
-  dev_cfg.spics_io_num = RLCD_PIN_CS;
+  dev_cfg.spics_io_num = -1;
   dev_cfg.queue_size = 10;
   
   ret = spi_bus_add_device(SPI3_HOST, &dev_cfg, &s_spi);
@@ -73,10 +73,11 @@ void U8g2RLCDRenderer::init()
   gpio_config_t io_conf = {};
   io_conf.intr_type = GPIO_INTR_DISABLE;
   io_conf.mode = GPIO_MODE_OUTPUT;
-  io_conf.pin_bit_mask = (1ULL << RLCD_PIN_DC) | (1ULL << RLCD_PIN_RST);
+  io_conf.pin_bit_mask = (1ULL << RLCD_PIN_DC) | (1ULL << RLCD_PIN_RST) | (1ULL << RLCD_PIN_CS);
   io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
   io_conf.pull_up_en = GPIO_PULLUP_ENABLE;
   gpio_config(&io_conf);
+  gpio_set_level(RLCD_PIN_CS, 1);
   
   // Setup u8g2 with custom callbacks
   u8g2_t *u = &m_u8g2;
@@ -112,7 +113,7 @@ void U8g2RLCDRenderer::setFont(bool bold, bool italic)
   }
   else
   {
-    u8g2_SetFont(&m_u8g2, u8g2_font_7x13_t_cyrillic);
+    u8g2_SetFont(&m_u8g2, u8g2_font_9x15_t_cyrillic);
   }
 }
 
@@ -123,19 +124,19 @@ void U8g2RLCDRenderer::setFontSize(int size)
   switch (size)
   {
   case 0: // Small
-    u8g2_SetFont(&m_u8g2, u8g2_font_6x12_t_cyrillic);
+    u8g2_SetFont(&m_u8g2, u8g2_font_7x13_t_cyrillic);
     break;
   case 1: // Medium (default)
-    u8g2_SetFont(&m_u8g2, u8g2_font_7x13_t_cyrillic);
-    break;
-  case 2: // Large
     u8g2_SetFont(&m_u8g2, u8g2_font_9x15_t_cyrillic);
     break;
-  case 3: // XL
+  case 2: // Large
     u8g2_SetFont(&m_u8g2, u8g2_font_10x20_t_cyrillic);
     break;
+  case 3: // XL
+    u8g2_SetFont(&m_u8g2, u8g2_font_inr24_t_cyrillic);
+    break;
   default:
-    u8g2_SetFont(&m_u8g2, u8g2_font_7x13_t_cyrillic);
+    u8g2_SetFont(&m_u8g2, u8g2_font_9x15_t_cyrillic);
     break;
   }
 }
@@ -256,6 +257,23 @@ void U8g2RLCDRenderer::flush_area(int x, int y, int width, int height)
   flush_display();
 }
 
+void U8g2RLCDRenderer::draw_status_bar(int current_page, int total_pages, float battery_pct)
+{
+  u8g2_SetFont(&m_u8g2, u8g2_font_6x12_tf);
+  u8g2_SetDrawColor(&m_u8g2, 1);
+
+  // Page number in top-left
+  char page_str[20];
+  snprintf(page_str, sizeof(page_str), "%d/%d", current_page + 1, total_pages);
+  u8g2_DrawStr(&m_u8g2, margin_left, 10, page_str);
+
+  // Battery in top-right
+  char bat_str[10];
+  snprintf(bat_str, sizeof(bat_str), "%d%%", (int)battery_pct);
+  int bat_w = u8g2_GetStrWidth(&m_u8g2, bat_str);
+  u8g2_DrawStr(&m_u8g2, m_width - margin_right - bat_w, 10, bat_str);
+}
+
 int U8g2RLCDRenderer::get_page_width()
 {
   return m_width - (margin_left + margin_right);
@@ -273,7 +291,7 @@ int U8g2RLCDRenderer::get_space_width()
 
 int U8g2RLCDRenderer::get_line_height()
 {
-  return u8g2_GetAscent(&m_u8g2) - u8g2_GetDescent(&m_u8g2);
+  return (u8g2_GetAscent(&m_u8g2) - u8g2_GetDescent(&m_u8g2)) * 3 / 2;
 }
 
 bool U8g2RLCDRenderer::dehydrate()
@@ -368,8 +386,30 @@ void U8g2RLCDRenderer::reset()
 static uint8_t u8x8_byte_custom(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_ptr)
 {
   (void)u8x8;
-  (void)arg_int;
-  (void)arg_ptr;
+
+  switch (msg)
+  {
+  case U8X8_MSG_BYTE_START_TRANSFER:
+    gpio_set_level(RLCD_PIN_CS, 0);
+    return 1;
+  case U8X8_MSG_BYTE_END_TRANSFER:
+    gpio_set_level(RLCD_PIN_CS, 1);
+    return 1;
+  case U8X8_MSG_BYTE_SET_DC:
+    gpio_set_level(RLCD_PIN_DC, arg_int ? 1 : 0);
+    return 1;
+  case U8X8_MSG_BYTE_SEND:
+  {
+    spi_transaction_t t = {};
+    t.length = arg_int * 8;
+    t.tx_buffer = arg_ptr;
+    spi_device_polling_transmit(s_spi, &t);
+    return 1;
+  }
+  default:
+    break;
+  }
+
   return 1;
 }
 
@@ -419,6 +459,7 @@ static uint8_t u8x8_d_st7305_custom(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, 
       
       // Helper lambda for sending command + data
       auto send_cmd_data = [](uint8_t cmd, const uint8_t *data, size_t len) {
+        gpio_set_level(RLCD_PIN_CS, 0);
         gpio_set_level(RLCD_PIN_DC, 0);
         spi_transaction_t t = {};
         t.length = 8;
@@ -431,6 +472,7 @@ static uint8_t u8x8_d_st7305_custom(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, 
           t.tx_buffer = data;
           spi_device_polling_transmit(s_spi, &t);
         }
+        gpio_set_level(RLCD_PIN_CS, 1);
       };
       
       send_cmd_data(0xD6, d6, sizeof(d6));
@@ -458,8 +500,8 @@ static uint8_t u8x8_d_st7305_custom(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, 
       send_cmd_data(0xB9, b9, sizeof(b9));
       send_cmd_data(0xB8, b8, sizeof(b8));
       
-      // Display inversion on
-      send_cmd_data(0x21, nullptr, 0);
+      // Display inversion off (black text on white background)
+      // send_cmd_data(0x21, nullptr, 0);
       
       send_cmd_data(0x2A, win_a, sizeof(win_a));
       send_cmd_data(0x2B, win_b, sizeof(win_b));
@@ -522,6 +564,7 @@ static uint8_t u8x8_d_st7305_custom(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, 
     }
     
     // Send column address set
+    gpio_set_level(RLCD_PIN_CS, 0);
     gpio_set_level(RLCD_PIN_DC, 0);
     {
       spi_transaction_t t = {};
@@ -571,6 +614,7 @@ static uint8_t u8x8_d_st7305_custom(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, 
       t.tx_buffer = all_rows;
       spi_device_polling_transmit(s_spi, &t);
     }
+    gpio_set_level(RLCD_PIN_CS, 1);
     break;
   }
     

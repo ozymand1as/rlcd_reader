@@ -35,6 +35,8 @@ bool EpubToc::load()
     if (epub->load())
     {
       ESP_LOGI(TAG, "Epub index loaded");
+      state.previous_rendered_page = -1;
+      state.previous_selected_item = -1;
       return false;
     }
   }
@@ -48,27 +50,28 @@ void EpubToc::render()
   int cell_height = renderer->get_page_height() / ITEMS_PER_PAGE;
   int start_index = current_page * ITEMS_PER_PAGE;
   int ypos = 0;
-  
-  if (current_page != state.previous_rendered_page || m_needs_redraw)
+
+  bool page_changed = current_page != state.previous_rendered_page;
+  bool selection_changed = state.selected_item != state.previous_selected_item;
+
+  if (page_changed || selection_changed || m_needs_redraw)
   {
     m_needs_redraw = false;
     renderer->clear_screen();
-    state.previous_selected_item = -1;
-    state.previous_rendered_page = -1;
   }
-  
+
   for (int i = start_index; i < start_index + ITEMS_PER_PAGE && i < epub->get_toc_items_count(); i++)
   {
-    if (current_page != state.previous_rendered_page)
+    if (page_changed || selection_changed || state.previous_rendered_page < 0)
     {
       TextBlock *title_block = new TextBlock(LEFT_ALIGN);
       title_block->add_span(epub->get_toc_item(i).title.c_str(), false, false);
       title_block->layout(renderer, epub, renderer->get_page_width());
-      
+
       int text_height = cell_height - PADDING;
       int title_height = title_block->line_breaks.size() * renderer->get_line_height();
       int y_offset = title_height < text_height ? (text_height - title_height) / 2 : 0;
-      
+
       int height = 0;
       for (int i = 0; i < title_block->line_breaks.size() && height < text_height; i++)
       {
@@ -77,25 +80,17 @@ void EpubToc::render()
       }
       delete title_block;
     }
-    
-    if (state.previous_selected_item == i)
+
+    if (state.selected_item == i)
     {
       for (int line = 0; line < 3; line++)
       {
         renderer->draw_rect(line, ypos + PADDING / 2 + line, renderer->get_page_width() - 2 * line, cell_height - PADDING - 2 * line, 255);
       }
     }
-    
-    if (state.selected_item == i)
-    {
-      for (int line = 0; line < 3; line++)
-      {
-        renderer->draw_rect(line, ypos + PADDING / 2 + line, renderer->get_page_width() - 2 * line, cell_height - PADDING - 2 * line, 0);
-      }
-    }
     ypos += cell_height;
   }
-  
+
   state.previous_selected_item = state.selected_item;
   state.previous_rendered_page = current_page;
 }

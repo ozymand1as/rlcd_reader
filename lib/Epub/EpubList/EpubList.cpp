@@ -1,5 +1,6 @@
 #include "EpubList.h"
 #include <esp_log.h>
+#include <strings.h>
 
 static const char *TAG = "PUBLIST";
 
@@ -8,11 +9,13 @@ static const char *TAG = "PUBLIST";
 
 void EpubList::next()
 {
+  if (state.num_epubs == 0) return;
   state.selected_item = (state.selected_item + 1) % state.num_epubs;
 }
 
 void EpubList::prev()
 {
+  if (state.num_epubs == 0) return;
   state.selected_item = (state.selected_item - 1 + state.num_epubs) % state.num_epubs;
 }
 
@@ -34,23 +37,30 @@ bool EpubList::load(const char *path)
   {
     while ((ent = readdir(dir)) != NULL)
     {
-      ESP_LOGD(TAG, "Found file: %s", ent->d_name);
+      ESP_LOGI(TAG, "Found file: %s (type=%d)", ent->d_name, ent->d_type);
       if (ent->d_name[0] == '.' || ent->d_type == DT_DIR)
       {
         continue;
       }
       int name_length = strlen(ent->d_name);
-      if (name_length < 5 || strcmp(ent->d_name + name_length - 5, ".epub") != 0)
+      // Accept .epub (LFN) and .epu (8.3 truncation)
+      bool is_epub = false;
+      if (name_length >= 5 && strcasecmp(ent->d_name + name_length - 5, ".epub") == 0)
+        is_epub = true;
+      if (name_length >= 4 && strcasecmp(ent->d_name + name_length - 4, ".epu") == 0)
+        is_epub = true;
+      if (!is_epub)
       {
         continue;
       }
       
-      ESP_LOGD(TAG, "Loading epub %s", ent->d_name);
+      ESP_LOGI(TAG, "Loading epub %s", ent->d_name);
       Epub *epub = new Epub(std::string("/fs/") + ent->d_name);
       if (epub->load())
       {
         strncpy(state.epub_list[state.num_epubs].path, epub->get_path().c_str(), MAX_PATH_SIZE);
-        strncpy(state.epub_list[state.num_epubs].title, replace_html_entities(epub->get_title()).c_str(), MAX_TITLE_SIZE);
+        strncpy(state.epub_list[state.num_epubs].title, replace_html_entities(epub->get_title()).c_str(), MAX_TITLE_SIZE - 1);
+        state.epub_list[state.num_epubs].title[MAX_TITLE_SIZE - 1] = '\0';
         state.num_epubs++;
         if (state.num_epubs == MAX_EPUB_LIST_SIZE)
         {
@@ -92,10 +102,11 @@ bool EpubList::load(const char *path)
   if (state.selected_item >= state.num_epubs)
   {
     state.selected_item = 0;
-    state.previous_rendered_page = -1;
-    state.previous_selected_item = -1;
   }
+  state.previous_rendered_page = -1;
+  state.previous_selected_item = -1;
   state.is_loaded = true;
+  ESP_LOGI(TAG, "Loaded %d epub(s)", state.num_epubs);
   return true;
 }
 
@@ -106,41 +117,41 @@ void EpubList::render()
   int cell_height = renderer->get_page_height() / EPUBS_PER_PAGE;
   int start_index = current_page * EPUBS_PER_PAGE;
   int ypos = 0;
-  
-  if (current_page != state.previous_rendered_page || m_needs_redraw)
+
+  bool page_changed = current_page != state.previous_rendered_page;
+  bool selection_changed = state.selected_item != state.previous_selected_item;
+
+  if (page_changed || selection_changed || m_needs_redraw)
   {
     m_needs_redraw = false;
-    renderer->show_busy();
     renderer->clear_screen();
-    state.previous_selected_item = -1;
-    state.previous_rendered_page = -1;
   }
-  
+
   for (int i = start_index; i < start_index + EPUBS_PER_PAGE && i < state.num_epubs; i++)
   {
-    if (current_page != state.previous_rendered_page)
+    if (page_changed || selection_changed || state.previous_rendered_page < 0)
     {
       ESP_LOGI(TAG, "Rendering item %d", i);
       Epub *epub = new Epub(state.epub_list[i].path);
       epub->load();
-      
+
       int image_xpos = PADDING;
       int image_ypos = ypos + PADDING;
       int image_height = cell_height - PADDING * 2;
       int image_width = 2 * image_height / 3;
-      
+
       int text_xpos = image_xpos + image_width + PADDING;
       int text_ypos = ypos + PADDING / 2;
       int text_width = renderer->get_page_width() - (text_xpos + PADDING);
       int text_height = cell_height - PADDING * 2;
-      
+
       TextBlock *title_block = new TextBlock(LEFT_ALIGN);
       title_block->add_span(state.epub_list[i].title, false, false);
       title_block->layout(renderer, epub, text_width);
-      
+
       int title_height = title_block->line_breaks.size() * renderer->get_line_height();
       int y_offset = title_height < text_height ? (text_height - title_height) / 2 : 0;
-      
+
       for (int i = 0; i < title_block->line_breaks.size() && y_offset + renderer->get_line_height() < text_height; i++)
       {
         title_block->render(renderer, i, text_xpos, text_ypos + y_offset);
@@ -149,25 +160,17 @@ void EpubList::render()
       delete title_block;
       delete epub;
     }
-    
-    if (state.previous_selected_item == i)
-    {
-      for (int i = 0; i < 5; i++)
-      {
-        renderer->draw_rect(i, ypos + PADDING / 2 + i, renderer->get_page_width() - 2 * i, cell_height - PADDING - 2 * i, 255);
-      }
-    }
-    
+
     if (state.selected_item == i)
     {
-      for (int i = 0; i < 5; i++)
+      for (int j = 0; j < 5; j++)
       {
-        renderer->draw_rect(i, ypos + PADDING / 2 + i, renderer->get_page_width() - 2 * i, cell_height - PADDING - 2 * i, 0);
+        renderer->draw_rect(j, ypos + PADDING / 2 + j, renderer->get_page_width() - 2 * j, cell_height - PADDING - 2 * j, 255);
       }
     }
     ypos += cell_height;
   }
-  
+
   state.previous_selected_item = state.selected_item;
   state.previous_rendered_page = current_page;
 }

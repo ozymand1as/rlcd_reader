@@ -42,6 +42,7 @@ public:
   virtual void clear_screen() = 0;
   virtual void flush_display(){};
   virtual void flush_area(int x, int y, int width, int height){};
+  virtual void draw_status_bar(int current_page, int total_pages, float battery_pct){};
 
   virtual int get_page_width() = 0;
   virtual int get_page_height() = 0;

@@ -5,7 +5,7 @@ A port of the [diy-esp32-epub-reader](https://github.com/atomic14/diy-esp32-epub
 ## Features
 
 - Read EPUB files from SD card
-- Navigate with 2 buttons (BOOT = back, KEY = scroll/select)
+- Navigate with 4 buttons (BOOT=back, KEY=select, FWD=next, PREV=previous)
 - Battery level monitoring
 - Deep sleep with state restoration
 - Cyrillic font support (Russian, Ukrainian, etc.)
@@ -37,6 +37,8 @@ A port of the [diy-esp32-epub-reader](https://github.com/atomic14/diy-esp32-epub
 |----------|------|--------|
 | BOOT | 0 | Back / Cancel |
 | KEY | 18 | Single=Down, Double=Up, Long=Select |
+| FWD | 20 | Next page / Scroll down |
+| PREV | 17 | Previous page / Scroll up |
 | PWR | N/A | Hardware power (not GPIO) |
 
 ### SD Card (SPI)
@@ -57,7 +59,7 @@ The reader automatically enters deep sleep after 2 minutes of inactivity. State 
 
 2. **Display Buffer**: The current screen content is saved to SD card (`/fs/front_buffer.z`) before sleep.
 
-3. **Wake Sources**: BOOT or KEY button press wakes the device via GPIO interrupt.
+3. **Wake Sources**: Any button press (BOOT, KEY, FWD, PREV) wakes the device via GPIO interrupt.
 
 4. **Restoration**: On wake, the device:
    - Restores UI state from RTC memory
@@ -99,8 +101,10 @@ The reader automatically enters deep sleep after 2 minutes of inactivity. State 
 
 | Button | Short Press | Double Press | Long Press |
 |--------|-------------|--------------|------------|
-| BOOT | Go back | - | - |
+| BOOT | Previous page | - | Back to list |
 | KEY | Next page | Previous page | Select/Confirm |
+| FWD (GP20) | Next page | - | Select/Confirm |
+| PREV (GP17) | Previous page | - | Back to list |
 
 ### UI Flow
 
@@ -159,7 +163,7 @@ rlcd_reader/
 │       │   └── RLCDRenderer.*      # Legacy renderer (unused)
 │       ├── controls/
 │       │   ├── ButtonControls.h     # Button interface
-│       │   └── RLCDButtonControls.* # 2-button + multi-click
+│       │   └── RLCDButtonControls.* # 4-button + multi-click
 │       └── battery/
 │           ├── Battery.h        # Battery interface
 │           └── ADCBattery.*     # ADC battery monitor
@@ -194,7 +198,7 @@ rlcd_reader/
 - [x] Board abstraction
 - [x] RLCD display driver (ST7305)
 - [x] u8g2 font rendering (Cyrillic support)
-- [x] Button controls (2-button, multi-click)
+- [x] Button controls (4-button, dedicated nav + multi-click)
 - [x] Battery monitoring (ADC)
 - [x] SD card filesystem (SPI, FAT32)
 - [x] EPUB parsing (OPF, NCX, spine, manifest)
@@ -225,7 +229,7 @@ rlcd_reader/
 | Refresh | 1-2 seconds | ~60ms |
 | Interface | Parallel | SPI |
 | Fonts | EPD fonts (400KB) | u8g2 (4-7KB each) |
-| Buttons | 3 (up/down/select) | 2 (back + multi-click) |
+| Buttons | 3 (up/down/select) | 4 (back/select/fwd/prev) |
 | Sleep wake | ULP coprocessor | GPIO interrupt |
 
 ## Hardware Spec

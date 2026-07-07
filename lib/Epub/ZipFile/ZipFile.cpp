@@ -1,4 +1,6 @@
 #include <esp_log.h>
+#include <stdio.h>
+#include <errno.h>
 #include "ZipFile.h"
 #include "miniz.h"
 
@@ -6,6 +8,20 @@ static const char *TAG = "ZIP";
 
 uint8_t *ZipFile::read_file_to_memory(const char *filename, size_t *size)
 {
+  ESP_LOGI(TAG, "Opening zip: '%s'", m_filename.c_str());
+
+  // Diagnostic: test fopen directly
+  FILE *test = fopen(m_filename.c_str(), "rb");
+  if (test) {
+    fseek(test, 0, SEEK_END);
+    long sz = ftell(test);
+    fclose(test);
+    ESP_LOGI(TAG, "fopen OK, size=%ld", sz);
+  } else {
+    ESP_LOGE(TAG, "fopen FAILED for '%s', errno=%d", m_filename.c_str(), errno);
+    return nullptr;
+  }
+
   mz_zip_archive zip_archive;
   memset(&zip_archive, 0, sizeof(zip_archive));
   bool status = mz_zip_reader_init_file(&zip_archive, m_filename.c_str(), 0);

@@ -1,5 +1,7 @@
 # RLCD EPUB Reader
 
+> This project was built (modified from source) using MiMo AI
+
 A port of the [diy-esp32-epub-reader](https://github.com/atomic14/diy-esp32-epub-reader) to the Waveshare ESP32-S3-RLCD-4.2 development board.
 
 ## Features

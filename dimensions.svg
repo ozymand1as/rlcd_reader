@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="210mm"
+   height="297mm"
+   viewBox="0 0 210 297"
+   version="1.1"
+   id="svg1"
+   inkscape:version="1.4.4 (dcaf3e7, 2026-05-05)"
+   sodipodi:docname="dimensions.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="mm"
+     inkscape:zoom="1.1514777"
+     inkscape:cx="302.22035"
+     inkscape:cy="256.62676"
+     inkscape:window-width="1352"
+     inkscape:window-height="848"
+     inkscape:window-x="0"
+     inkscape:window-y="30"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="layer1" />
+  <defs
+     id="defs1" />
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <rect
+       style="fill:#000000;stroke-width:0.264583"
+       id="rect1"
+       width="92.5"
+       height="69"
+       x="33"
+       y="5"
+       inkscape:transform-center-x="8.5892598"
+       inkscape:transform-center-y="0.61351855" />
+    <rect
+       style="fill:#808080;stroke-width:0.264583"
+       id="rect2"
+       width="85.5"
+       height="64.5"
+       x="38.10051"
+       y="7"
+       inkscape:transform-center-x="8.9103161"
+       inkscape:transform-center-y="-0.66731564" />
+    <text
+       xml:space="preserve"
+       style="font-size:3.175px;writing-mode:lr-tb;direction:ltr;fill:#808080;stroke-width:0.264583"
+       x="-41.100273"
+       y="32.350243"
+       id="text2"
+       transform="rotate(-90)"><tspan
+         sodipodi:role="line"
+         id="tspan2"
+         style="fill:#000000;stroke-width:0.264583"
+         x="-41.100273"
+         y="32.350243">USB</tspan></text>
+    <rect
+       style="fill:#000000;stroke-width:0.264583"
+       id="rect3"
+       width="4"
+       height="69"
+       x="14.9"
+       y="5" />
+    <rect
+       style="fill:#666666;stroke-width:0.264583"
+       id="rect4"
+       width="7"
+       height="6"
+       x="8"
+       y="6" />
+    <rect
+       style="fill:#666666;stroke-width:0.264583"
+       id="rect5"
+       width="7"
+       height="6"
+       x="8"
+       y="67" />
+    <rect
+       style="fill:#666666;stroke-width:0.264583"
+       id="rect6"
+       width="3"
+       height="11"
+       x="12"
+       y="34"
+       rx="2" />
+    <rect
+       style="fill:#666666;stroke-width:0.284402"
+       id="rect7"
+       width="4"
+       height="15"
+       x="11"
+       y="51" />
+    <rect
+       style="fill:#000000;stroke-width:0.264583"
+       id="rect8"
+       width="92.5"
+       height="4"
+       x="33"
+       y="82" />
+    <rect
+       style="fill:#666666;stroke-width:0.264583"
+       id="rect9"
+       width="7"
+       height="6"
+       x="-93"
+       y="34"
+       transform="rotate(-90)" />
+    <rect
+       style="fill:#666666;stroke-width:0.264583"
+       id="rect10"
+       width="7"
+       height="6"
+       x="-93"
+       y="118.5"
+       transform="rotate(-90)" />
+    <rect
+       style="fill:#cccccc;stroke-width:1.12552"
+       id="rect11"
+       width="30"
+       height="3"
+       x="-94"
+       y="86"
+       transform="scale(-1,1)" />
+    <text
+       xml:space="preserve"
+       style="font-size:3.175px;writing-mode:lr-tb;direction:ltr;fill:#333333;stroke-width:0.264583"
+       x="74.613007"
+       y="91.841148"
+       id="text12"><tspan
+         sodipodi:role="line"
+         id="tspan12"
+         style="stroke-width:0.264583"
+         x="74.613007"
+         y="91.841148">BTNs</tspan></text>
+    <rect
+       style="fill:#000000;stroke-width:0.264583"
+       id="rect12"
+       width="4"
+       height="69"
+       x="-144"
+       y="5"
+       transform="scale(-1,1)" />
+    <rect
+       style="fill:#666666;stroke-width:0.264583"
+       id="rect13"
+       width="7"
+       height="6"
+       x="-150.89999"
+       y="6"
+       transform="scale(-1,1)" />
+    <rect
+       style="fill:#666666;stroke-width:0.264583"
+       id="rect14"
+       width="7"
+       height="6"
+       x="-150.89999"
+       y="67"
+       transform="scale(-1,1)" />
+  </g>
+</svg>

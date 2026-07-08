@@ -23,9 +23,9 @@
      inkscape:pagecheckerboard="0"
      inkscape:deskcolor="#d1d1d1"
      inkscape:document-units="mm"
-     inkscape:zoom="1.4109161"
-     inkscape:cx="229.28366"
-     inkscape:cy="123.67851"
+     inkscape:zoom="1.7130793"
+     inkscape:cx="313.17873"
+     inkscape:cy="181.25256"
      inkscape:window-width="1352"
      inkscape:window-height="820"
      inkscape:window-x="0"
@@ -33,27 +33,52 @@
      inkscape:window-maximized="0"
      inkscape:current-layer="layer1" />
   <defs
-     id="defs1" />
+     id="defs1">
+    <inkscape:path-effect
+       effect="bspline"
+       id="path-effect4"
+       is_visible="true"
+       lpeversion="1.3"
+       weight="33.333333"
+       steps="2"
+       helper_size="0"
+       apply_no_weight="true"
+       apply_with_weight="true"
+       only_selected="false"
+       uniform="false" />
+  </defs>
   <g
      inkscape:label="Layer 1"
      inkscape:groupmode="layer"
      id="layer1">
     <path
-       id="path5"
        style="fill:none;stroke:#000000;stroke-width:0.01;stroke-linejoin:round;stroke-dasharray:none"
-       d="m 103.505,8.005 c 0,-1.662 -1.338,-3 -3,-3 h -92.5 v 0 c -1.662,0 -3,1.338 -3,3 v 9.055273 h 10.05112 1.998203 l -0.0025,-9.0052211 74.449158,0.00378 v 8.9977161 h 9.000059 v 51.00377 H 103.505 V 17.060271 Z"
-       sodipodi:nodetypes="sscssccccccccccs" />
+       d="m 106.505,71.115002 v 9.055271 c 0,1.662 -1.338,3 -3,3 h -92.5 v 0 c -1.662,0 -3,-1.338 -3,-3 V 72.115 h 10.051121 0.998129 l -0.0025,8.005221 76.44925,-0.0038 V 72.119 h 8.00004 V 71.031625 20.246729 19.0675 L 95.501,19.0225 v -7.908645 l -76.44925,-0.0038 0.0025,7.934945 H 18.056121 8.005 v -7.984997 c 0,-1.662 1.338,-3 3,-3 v 0 h 92.5 c 1.662,0 3,1.338 3,3 v 9.055268 0.129015 50.781136 z"
+       id="path3"
+       sodipodi:nodetypes="csscssccccccccccccccccsscsscccc" />
     <circle
        style="fill:none;stroke:#000000;stroke-width:0.01;stroke-linejoin:round;stroke-dasharray:none"
        id="path6"
-       cx="13.05"
-       cy="13.05"
+       cx="15.05"
+       cy="15.05"
        r="3" />
     <circle
        style="fill:none;stroke:#000000;stroke-width:0.01;stroke-linejoin:round;stroke-dasharray:none"
        id="path6-8"
-       cx="95.550003"
-       cy="13.05"
+       cx="99.504997"
+       cy="15.05"
+       r="3" />
+    <circle
+       style="fill:none;stroke:#000000;stroke-width:0.01;stroke-linejoin:round;stroke-dasharray:none"
+       id="circle4"
+       cx="15.005"
+       cy="76.18"
+       r="3" />
+    <circle
+       style="fill:none;stroke:#000000;stroke-width:0.01;stroke-linejoin:round;stroke-dasharray:none"
+       id="circle5"
+       cx="99.504997"
+       cy="76.18"
        r="3" />
   </g>
 </svg>
